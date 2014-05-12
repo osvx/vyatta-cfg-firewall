@@ -1,0 +1,6 @@
+type: txt
+
+help: Raw iptables rule without table and chain definition
+ 
+syntax:expression: pattern $VAR(@) "^.{1,}$" ; "iptables rule can't be empty"
+

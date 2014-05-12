@@ -1,0 +1,5 @@
+create: sudo /opt/vyatta/sbin/vyatta-firewall.pl --connmark-restore 1
+
+delete: sudo /opt/vyatta/sbin/vyatta-firewall.pl --connmark-restore 0
+
+help: Option to CONNMARK auto restore-mark for all connections

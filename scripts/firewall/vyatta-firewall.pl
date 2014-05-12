@@ -13,10 +13,11 @@ use Vyatta::Zone;
 use Sys::Syslog qw(:standard :macros);
 
 # Enable printing debug output to stdout.
-my $debug_flag = 0;
+my $debug_flag = 1;
 
 # Enable sending debug output to syslog.
 my $syslog_flag = 1;
+
 
 my $fw_stateful_file = '/var/run/vyatta_fw_stateful';
 my $fw_tree_file     = '/var/run/vyatta_fw_trees';
@@ -30,13 +31,23 @@ my $max_rule = 10000;
 my (@setup, @updateints, @updaterules);
 my ($teardown, $teardown_ok);
 
+# CONNMARK restore
+my ($connmark_restore);
+
+# User hooks
+my(@createuserhooks, @removeuserhooks, @updateuserrules);
+
 GetOptions("setup=s{2}"        => \@setup,
            "teardown=s"        => \$teardown,
            "teardown-ok=s"     => \$teardown_ok,
            "update-rules=s{2}" => \@updaterules,
            "update-interfaces=s{5}" => \@updateints,
            "debug"             => \$debug_flag,
-           "syslog"            => \$syslog_flag
+           "syslog"            => \$syslog_flag,
+	   "connmark-restore=i"            => \$connmark_restore,
+           "create-user-hooks=s{3}"   => \@createuserhooks,
+	   "remove-user-hooks=s{3}"   => \@removeuserhooks,
+	   "update-user-rules=s{3}"   => \@updateuserrules,
 );
 
 # mapping from config node to iptables/ip6tables table
@@ -103,6 +114,21 @@ sub other_table {
 
 if (scalar(@setup) == 2) {
   setup_iptables(@setup);
+  exit 0;
+}
+
+if (scalar(@createuserhooks) == 3) {
+  create_user_hooks(@createuserhooks);
+  exit 0;
+}
+
+if (scalar(@removeuserhooks) == 3) {
+  remove_user_hooks(@removeuserhooks);
+  exit 0;
+}
+
+if (scalar(@updateuserrules) == 3) {
+  update_user_rules(@updateuserrules);
   exit 0;
 }
 
@@ -198,6 +224,16 @@ if (defined $teardown) {
   }
 
   exit 0;
+}
+
+if(defined $connmark_restore) {
+	if($connmark_restore == 1) {
+		enable_fw_connmark_restoremark ();
+	}
+	else {
+		disable_fw_connmark_restoremark ();
+	}
+	exit 0;
 }
 
 help();
@@ -326,7 +362,7 @@ sub is_tree_in_use {
 }
 
 sub add_route_table {
-  my ($table, $rule) = @_;
+  my ($table, $connmark, $rule) = @_;
   my $rule_found = 0;
   my $table_count = -1;
   my @newlines = ();
@@ -364,7 +400,15 @@ sub add_route_table {
     my $mark = 0x7FFFFFFF + $table;
     system("ip rule add pref $table fwmark $mark table $table");
     run_cmd("iptables -t mangle -N VYATTA_PBR_$table", 1);
-    run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -j MARK --set-mark $mark", 1);
+	if($connmark == 0)
+	{
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -j MARK --set-mark $mark", 1);
+	}
+	else
+	{
+		# This is a CONNMARK table
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -m state --state NEW -j CONNMARK --set-mark $mark", 1);
+	}
     run_cmd("iptables -t mangle -I VYATTA_PBR_$table 2 -j ACCEPT", 1);
   }
 
@@ -581,7 +625,11 @@ sub update_rules {
       }
 
       if ($node->is_route_table) {
-        add_route_table($node->is_route_table, $name);
+        add_route_table($node->is_route_table, 0, $name);
+      }
+
+      if ($node->is_connmark_table) {
+	add_route_table($node->is_connmark_table, 1, $name);
       }
 
       my ($err_str, @rule_strs) = $node->rule();
@@ -829,6 +877,19 @@ sub disable_fw_conntrack {
   run_cmd("$iptables_cmd -t raw -R FW_CONNTRACK 1 -j RETURN", 1);
 }
 
+sub enable_fw_connmark_restoremark {
+  my $iptables_cmd = shift;
+  log_msg("enable_fw_connmark_restoremark");
+  run_cmd("iptables -t mangle -A PREROUTING -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+  run_cmd("iptables -t mangle -A OUTPUT -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+}
+
+sub disable_fw_connmark_restoremark {
+  my $iptables_cmd = shift;
+  log_msg("disable_fw_connmark_restoremark");
+  run_cmd("iptables -t mangle -D PREROUTING -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+  run_cmd("iptables -t mangle -D OUTPUT -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+}
 
 sub teardown_iptables {
   my ($table, $iptables_cmd) = @_;
@@ -898,6 +959,109 @@ sub setup_iptables {
   }
 
   return 0;
+}
+
+sub user_hook_name {
+	my($table, $chain, $prepost) = @_;
+	return "USER_" . uc($table) . "_" . uc($chain) . "_" . uc($prepost);
+}
+
+sub create_user_hooks {
+	my($iptables_cmd, $table, $chain) = @_;
+	my($table_uc) = uc($table);
+	my($chain_uc) = uc($chain);
+	my($hook_name_pre) = user_hook_name($table, $chain, "pre");
+	my($hook_name_post) = user_hook_name($table, $chain, "post");
+
+	run_cmd("$iptables_cmd -t $table -N $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -N $hook_name_post", 1);
+	run_cmd("$iptables_cmd -t $table -F $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -F $hook_name_post", 1);
+
+	run_cmd("$iptables_cmd -t $table -I $chain_uc 1 -j $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -A $chain_uc -j $hook_name_post", 1);
+	
+	return 0;
+}
+
+sub remove_user_hooks {
+	my($iptables_cmd, $table, $chain) = @_;
+	my($table_uc) = uc($table);
+	my($chain_uc) = uc($chain);
+	my($hook_name_pre) = user_hook_name($table, $chain, "pre");
+	my($hook_name_post) = user_hook_name($table, $chain, "post");
+
+	run_cmd("$iptables_cmd -t $table -D $chain_uc -j $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -D $chain_uc -j $hook_name_post", 1);
+	run_cmd("$iptables_cmd -t $table -F $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -F $hook_name_post", 1);
+	run_cmd("$iptables_cmd -t $table -X $hook_name_pre", 1);
+	run_cmd("$iptables_cmd -t $table -X $hook_name_post", 1);
+
+	return 0;
+}
+
+sub add_user_iptables_rule {
+	my($tree, $iptables_cmd, $table, $hook_name) = @_;
+	my $config = new Vyatta::Config;
+	my $iptablesrule = 1;
+
+	# set our config level to rule and get the rule numbers
+	$config->setLevel($tree);
+	my $rule = $config->returnValue();
+
+	if(defined $rule)
+	{
+		log_msg("Processing: " . $rule);
+		run_cmd("$iptables_cmd -t $table -A $hook_name " . $rule, 1);
+	}
+	else
+	{
+		log_msg("Empty rule at: " . $tree);
+	}
+	
+	return 0;
+}
+
+sub process_user_rules {
+	my($tree, $iptables_cmd, $table, $hook_name) = @_;
+	my $config = new Vyatta::Config;
+	my $iptablesrule = 1;
+
+	# set our config level to rule and get the rule numbers
+	$config->setLevel($tree);
+
+	# Let's find the status of the rule nodes
+	my @rules = ();
+	@rules = $config->listNodes();
+
+	
+	run_cmd("$iptables_cmd -t $table -F $hook_name", 1);
+
+	foreach my $rule (sort numerically @rules) 
+	{
+		my($rule_tree) = $rule . " iptables";
+		if($config->exists($rule_tree))
+		{
+			add_user_iptables_rule($tree . " " . $rule_tree, $iptables_cmd, $table, $hook_name);
+		}
+	}
+
+	return 0;
+}
+
+sub update_user_rules {
+	my($iptables_cmd, $table, $chain) = @_;
+	my %nodes = ();
+
+	# set our config level to rule and get the rule numbers
+	my $tree = "firewall advanced $table $chain pre";
+	process_user_rules($tree, $iptables_cmd, $table, user_hook_name($table, $chain, "pre"));
+
+	$tree = "firewall advanced $table $chain post";
+	process_user_rules($tree, $iptables_cmd, $table, user_hook_name($table, $chain, "post"));
+
+	return 0;
 }
 
 sub set_default_policy {

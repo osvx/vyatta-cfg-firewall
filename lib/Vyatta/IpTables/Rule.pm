@@ -25,6 +25,7 @@ my %fields = (
   _icmp_type   => undef,
   _icmp_name   => undef,
   _icmpv6_type => undef,
+  _mod_connmark => undef,
   _mod_mark    => undef,
   _mod_table   => undef,
   _mod_dscp    => undef,
@@ -78,6 +79,7 @@ my %dummy_rule = (
   _icmp_type   => undef,
   _icmp_name   => undef,
   _icmpv6_type => undef,
+  _mod_connmark => undef,
   _mod_mark    => undef,
   _mod_table   => undef,
   _mod_dscp    => undef,
@@ -172,6 +174,7 @@ sub setup_base {
   $self->{_icmp_type}   = $config->$val_func("icmp type");
   $self->{_icmp_name}   = $config->$val_func("icmp type-name");
   $self->{_icmpv6_type} = $config->$val_func("icmpv6 type");
+  $self->{_mod_connmark}    = $config->$val_func("set connmark");
   $self->{_mod_mark}    = $config->$val_func("set mark");
   $self->{_mod_table}   = $config->$val_func("set table");
   if ($self->{_mod_table} eq 'main') {
@@ -253,6 +256,7 @@ sub print {
   print "icmp type: $self->{_icmp_type}\n" if defined $self->{_icmp_type};
   print "icmpv6 type: $self->{_icmpv6_type}\n"
                                            if defined $self->{_icmpv6_type};
+  print "mod connmark: $self->{_mod_connmark}\n"   if defined $self->{_mod_connmark};
   print "mod mark: $self->{_mod_mark}\n"   if defined $self->{_mod_mark};
   print "mod table: $self->{_mod_table}\n"   if defined $self->{_mod_table};
   print "mod dscp: $self->{_mod_dscp}\n"   if defined $self->{_mod_dscp};
@@ -280,6 +284,11 @@ sub is_disabled {
   my $self = shift;
   return 1 if defined $self->{_disable};
   return 0;
+}
+
+sub is_connmark_table {
+  my $self = shift;
+  return $self->{_mod_connmark};
 }
 
 sub is_route_table {
@@ -598,6 +607,11 @@ first character capitalized eg. Mon,Thu,Sat For negation, add ! in front eg. !Mo
   } elsif ($self->{_comment} =~ m/^policy/) {
     # mangle actions
     my $count = 0;
+    if (defined($self->{_mod_connmark})) {
+      # CONNMARK
+      $rule .= "-j VYATTA_PBR_$self->{_mod_connmark} ";
+      $count++;
+    }
     if (defined($self->{_mod_mark})) {
       # MARK
       $rule .= "-j MARK --set-mark $self->{_mod_mark} ";

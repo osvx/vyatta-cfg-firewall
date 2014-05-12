@@ -1,5 +1,5 @@
 type: txt
-help: Routing table to forward packet with
+help: Routing table to forward packet with (marked with MARK)
 val_help: u32:1-200 ; Table number
 val_help: main ; Main table
 syntax:expression: exec "

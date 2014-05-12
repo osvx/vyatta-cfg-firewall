@@ -1,0 +1,16 @@
+# This one should be run after normal firewall and policy templates
+priority: 250
+
+help: Advanced firewall configuration
+
+create: 
+	sudo /opt/vyatta/sbin/vyatta-firewall.pl --create-user-hooks iptables $VAR(../@) $VAR(@)
+
+delete:
+	sudo /opt/vyatta/sbin/vyatta-firewall.pl --remove-user-hooks iptables $VAR(../@) $VAR(@)
+
+end:
+	if [ ${COMMIT_ACTION} != 'DELETE' ] ;
+	then 
+		sudo /opt/vyatta/sbin/vyatta-firewall.pl -update-user-rules iptables $VAR(../@) $VAR(@)
+	fi
