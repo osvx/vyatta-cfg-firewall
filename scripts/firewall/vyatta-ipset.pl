@@ -204,6 +204,7 @@ sub ipset_copy_set {
         my $tmpfile = "/tmp/set.$$";
         system("ipset -S $set_name > $tmpfile");
         system("sed -i \'s/ $set_name / $set_copy /g\' $tmpfile");
+        system("sed -i \'s/ family.*//g\' $tmpfile");
         system("ipset -R < $tmpfile");
         unlink $tmpfile;
         my $copy  = new Vyatta::IpTables::IpSet($set_copy, $set_type);

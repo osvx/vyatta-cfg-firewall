@@ -1,3 +1,8 @@
+# This rules should be added at the last (after POLICY and WANLOADBALANCING)
+# to be sure that it is the first one in PREROUTING table
+
+priority: 990
+
 create: sudo /opt/vyatta/sbin/vyatta-firewall.pl --connmark-restore 1
 
 delete: sudo /opt/vyatta/sbin/vyatta-firewall.pl --connmark-restore 0

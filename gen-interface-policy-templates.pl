@@ -70,6 +70,7 @@ my %interface_hash = (
       '$VAR(../../../../@).$VAR(../../@)',
 
     'wirelessmodem/node.tag' => '$VAR(../../@)',
+    'pptp-client/node.tag' => '$VAR(../../@)',
 );
 
 # The subdirectory where the generated templates will go

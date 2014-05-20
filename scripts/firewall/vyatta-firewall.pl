@@ -402,14 +402,30 @@ sub add_route_table {
     run_cmd("iptables -t mangle -N VYATTA_PBR_$table", 1);
 	if($connmark == 0)
 	{
+		# This is a MARK table
 		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -j MARK --set-mark $mark", 1);
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 2 -j ACCEPT", 1);
 	}
 	else
 	{
 		# This is a CONNMARK table
-		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -m state --state NEW -j CONNMARK --set-mark $mark", 1);
+		# First, we should check that packet has no any previously assigned CONNMARK
+		# TODO: may be it's better to check previous MARK assignment too
+		# If it was already marked, than exit this chain
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 1 -m connmark ! --mark 0x0 -j ACCEPT", 1);
+
+		# We should ensure, that this is a NEW session
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 2 -m state ! --state NEW -j ACCEPT", 1);
+
+		# Noew we're marking packet with our MARK to make it routed throught specified routing table
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 3 -j MARK --set-mark $mark", 1);
+
+		# And saving this this mark to CONNMARK for future uses
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 4 -j CONNMARK --save-mark", 1);
+
+		# At the last, we're accepting marked packet 
+		run_cmd("iptables -t mangle -I VYATTA_PBR_$table 5 -j ACCEPT", 1);
 	}
-    run_cmd("iptables -t mangle -I VYATTA_PBR_$table 2 -j ACCEPT", 1);
   }
 
   write_refcnt_file($policy_ref_file, @newlines);
@@ -880,8 +896,8 @@ sub disable_fw_conntrack {
 sub enable_fw_connmark_restoremark {
   my $iptables_cmd = shift;
   log_msg("enable_fw_connmark_restoremark");
-  run_cmd("iptables -t mangle -A PREROUTING -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
-  run_cmd("iptables -t mangle -A OUTPUT -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+  run_cmd("iptables -t mangle -I PREROUTING 1 -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
+  run_cmd("iptables -t mangle -I OUTPUT 1 -m state --state ESTABLISHED,RELATED -m connmark ! --mark 0 -j CONNMARK --restore-mark", 1);
 }
 
 sub disable_fw_connmark_restoremark {
