@@ -1,3 +1,14 @@
+vyatta-cfg-firewall (0.13.91+osvx1+projectx1) unstable; urgency=medium
+
+  [ Daniil Baturin ]
+  * Bug #144: change priorities so route policy is after firewall groups so it's possible to use firewall groups in it. Fix suggested by Cesar Fazan.
+
+  [ Valentin Yakovenkov ]
+  * Added advanced firewall rules set firewall advanced ...
+  * More support for CONNMARK
+
+ -- Valentin Yakovenkov <yakovenkov@gmail.com>  Sun, 01 Jun 2014 20:44:33 +0400
+
 vyatta-cfg-firewall (0.13.91+vyos1+helium3) unstable; urgency=low
 
   * Bug #170: add L2TPv3 interface type to policy template generator.
