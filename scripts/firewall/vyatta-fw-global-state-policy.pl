@@ -26,7 +26,6 @@
 use lib "/opt/vyatta/share/perl5";
 use warnings;
 use strict;
-use Switch;
 use Vyatta::Config;
 use Vyatta::IpTables::Mgr;
 use Getopt::Long;

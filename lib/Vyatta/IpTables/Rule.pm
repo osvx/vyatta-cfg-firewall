@@ -717,31 +717,29 @@ sub outputXml {
 
 sub validate_timevalues {
  my ($string, $type) = @_;
- use Switch;
  use Time::Local;
- switch ($type) {
-  case "date"      { $string =~ s/-//g;
+  if($type eq "date")      { $string =~ s/-//g;
                      my ($year, $month, $day) = unpack "A4 A2 A2", $string;
                      eval { timelocal(0,0,0,$day, $month-1, $year);
                             1;
                           } or return 0;
                    }
 
-  case "time"      { $string =~ s/://g;
+  elsif($type eq "time")      { $string =~ s/://g;
                      my ($hour, $min, $sec) = unpack "A2 A2 A2", $string;
                      eval { timelocal($sec,$min,$hour, 1, 0, 1970);
                             1;
                           } or return 0;
                    }
 
-  case "monthdays" { while($string =~ m/(\d+)/g) {
+  elsif($type eq "monthdays") { while($string =~ m/(\d+)/g) {
                         if ($1 < 1 || $1 > 31) {
                            return 0;
                         }
                      }
                    }
 
-  case "weekdays"  { my @weekdays = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun");
+  elsif($type eq "weekdays")  { my @weekdays = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun");
                      while($string =~ m/(\w+)/g) {
                         if (!grep(/$1/,@weekdays)) {
                            return 0;
@@ -753,7 +751,6 @@ sub validate_timevalues {
                      "Invalid type '$type' passed to sub validate_timevalues()\n";
 		     return 0;
                    }
- }
   return 1;
 }
 
