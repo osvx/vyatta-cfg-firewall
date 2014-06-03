@@ -36,15 +36,15 @@ my %fields = (
   _non_frag    => undef,
   _recent_time => undef,
   _recent_cnt  => undef,
-  _p2p         => {
-                    _all   => undef,
-                    _apple => undef,
-                    _bit   => undef,
-                    _dc    => undef,
-                    _edk   => undef,
-                    _gnu   => undef,
-                    _kazaa => undef,
-                  },
+#  _p2p         => {
+#                    _all   => undef,
+#                    _apple => undef,
+#                    _bit   => undef,
+#                    _dc    => undef,
+#                    _edk   => undef,
+#                    _gnu   => undef,
+#                    _kazaa => undef,
+#                  },
   _time        => {
                    _startdate => undef,
                    _stopdate  => undef,
@@ -90,15 +90,15 @@ my %dummy_rule = (
   _non_frag    => undef,
   _recent_time => undef,
   _recent_cnt  => undef,
-  _p2p         => {
-                    _all   => undef,
-                    _apple => undef,
-                    _bit   => undef,
-                    _dc    => undef,
-                    _edk   => undef,
-                    _gnu   => undef,
-                    _kazaa => undef,
-                  },
+#  _p2p         => {
+#                    _all   => undef,
+#                    _apple => undef,
+#                    _bit   => undef,
+#                    _dc    => undef,
+#                    _edk   => undef,
+#                    _gnu   => undef,
+#                    _kazaa => undef,
+#                  },
   _time        => {
                    _startdate => undef,
                    _stopdate  => undef,
@@ -189,13 +189,13 @@ sub setup_base {
   $self->{_recent_time} = $config->$val_func('recent time');
   $self->{_recent_cnt}  = $config->$val_func('recent count');
 
-  $self->{_p2p}->{_all}   = $config->$exists_func("p2p all");
-  $self->{_p2p}->{_apple} = $config->$exists_func("p2p applejuice");
-  $self->{_p2p}->{_bit}   = $config->$exists_func("p2p bittorrent");
-  $self->{_p2p}->{_dc}    = $config->$exists_func("p2p directconnect");
-  $self->{_p2p}->{_edk}   = $config->$exists_func("p2p edonkey");
-  $self->{_p2p}->{_gnu}   = $config->$exists_func("p2p gnutella");
-  $self->{_p2p}->{_kazaa} = $config->$exists_func("p2p kazaa");
+#  $self->{_p2p}->{_all}   = $config->$exists_func("p2p all");
+#  $self->{_p2p}->{_apple} = $config->$exists_func("p2p applejuice");
+#  $self->{_p2p}->{_bit}   = $config->$exists_func("p2p bittorrent");
+#  $self->{_p2p}->{_dc}    = $config->$exists_func("p2p directconnect");
+#  $self->{_p2p}->{_edk}   = $config->$exists_func("p2p edonkey");
+#  $self->{_p2p}->{_gnu}   = $config->$exists_func("p2p gnutella");
+#  $self->{_p2p}->{_kazaa} = $config->$exists_func("p2p kazaa");
 
   $self->{_time}->{_startdate} = $config->$val_func("time startdate");
   $self->{_time}->{_stopdate}  = $config->$val_func("time stopdate");
@@ -464,20 +464,20 @@ sub rule {
     $rule .= ' -m policy --pol none --dir in ';
   }
 
-  my $p2p = undef;
-  if (defined($self->{_p2p}->{_all})) {
-    $p2p = '--apple --bit --dc --edk --gnu --kazaa ';
-  } else {
-    my @apps = qw(apple bit dc edk gnu kazaa);
-    foreach (@apps) {
-      if (defined($self->{_p2p}->{"_$_"})) {
-        $p2p .= "--$_ ";
-      }
-    }
-  }
-  if (defined($p2p)) {
-    $rule .= " -m ipp2p $p2p ";
-  }
+#  my $p2p = undef;
+#  if (defined($self->{_p2p}->{_all})) {
+#    $p2p = '--apple --bit --dc --edk --gnu --kazaa ';
+#  } else {
+#    my @apps = qw(apple bit dc edk gnu kazaa);
+#    foreach (@apps) {
+#      if (defined($self->{_p2p}->{"_$_"})) {
+#        $p2p .= "--$_ ";
+#      }
+#    }
+#  }
+#  if (defined($p2p)) {
+#    $rule .= " -m ipp2p $p2p ";
+#  }
 
   my $time = undef;
   if (defined($self->{_time}->{_utc})) {
