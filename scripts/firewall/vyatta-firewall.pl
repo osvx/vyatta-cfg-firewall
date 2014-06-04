@@ -13,10 +13,10 @@ use Vyatta::Zone;
 use Sys::Syslog qw(:standard :macros);
 
 # Enable printing debug output to stdout.
-my $debug_flag = 1;
+my $debug_flag = 0;
 
 # Enable sending debug output to syslog.
-my $syslog_flag = 1;
+my $syslog_flag = 0;
 
 
 my $fw_stateful_file = '/var/run/vyatta_fw_stateful';
